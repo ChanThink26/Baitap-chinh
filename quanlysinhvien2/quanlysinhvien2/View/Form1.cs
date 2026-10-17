@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using quanlysinhvien2.Bus;
 using quanlysinhvien2.Data.Entities;
 
@@ -429,16 +430,24 @@ public sealed class Form1 : Form
 
     private void Form1_Load(object? sender, EventArgs e)
     {
-        _cboLop.DisplayMember = nameof(LopHoc.TenLop);
-        _cboLop.ValueMember = nameof(LopHoc.MaLop);
-        _cboLop.DataSource = _studentService.GetClasses().ToList();
-        _cboLocLop.DisplayMember = nameof(LopHoc.TenLop);
-        _cboLocLop.ValueMember = nameof(LopHoc.MaLop);
-        _cboLocLop.DataSource = new[] { new LopHoc { MaLop = string.Empty, TenLop = "Tất cả lớp" } }
-            .Concat(_studentService.GetClasses())
-            .ToList();
-        RefreshStudentGrid();
-        ClearForm();
+        try
+        {
+            _cboLop.DisplayMember = nameof(LopHoc.TenLop);
+            _cboLop.ValueMember = nameof(LopHoc.MaLop);
+            _cboLop.DataSource = _studentService.GetClasses().ToList();
+            _cboLocLop.DisplayMember = nameof(LopHoc.TenLop);
+            _cboLocLop.ValueMember = nameof(LopHoc.MaLop);
+            _cboLocLop.DataSource = new[] { new LopHoc { MaLop = string.Empty, TenLop = "Tất cả lớp" } }
+                .Concat(_studentService.GetClasses())
+                .ToList();
+            RefreshStudentGrid();
+            ClearForm();
+        }
+        catch (Exception exception)
+        {
+            SetStudentMode(isExistingStudent: false);
+            ShowError(exception);
+        }
     }
 
     private void TxtMaSV_TextChanged(object? sender, EventArgs e)
@@ -448,15 +457,23 @@ public sealed class Form1 : Form
             return;
         }
 
-        var student = _studentService.GetStudentById(_txtMaSV.Text.Trim());
-        if (student is not null)
+        try
         {
-            SetStudentFields(student);
-            return;
-        }
+            var student = _studentService.GetStudentById(_txtMaSV.Text.Trim());
+            if (student is not null)
+            {
+                SetStudentFields(student);
+                return;
+            }
 
-        ClearStudentFields();
-        SetStudentMode(isExistingStudent: false);
+            ClearStudentFields();
+            SetStudentMode(isExistingStudent: false);
+        }
+        catch (Exception exception)
+        {
+            SetStudentMode(isExistingStudent: false);
+            ShowError(exception);
+        }
     }
 
     private void GridStudents_SelectionChanged(object? sender, EventArgs e)
@@ -471,39 +488,49 @@ public sealed class Form1 : Form
             return;
         }
 
-        var student = _studentService.GetStudentById(studentId);
-        if (student is not null)
+        try
         {
-            SetStudentFields(student);
+            var student = _studentService.GetStudentById(studentId);
+            if (student is not null)
+            {
+                SetStudentFields(student);
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception);
         }
     }
 
     private void BtnNhap_Click(object? sender, EventArgs e)
     {
-        var student = CreateStudentFromForm();
-        if (!_studentService.TryAddStudent(student, out var error))
+        try
         {
-            ShowError(error);
-            return;
+            _studentService.AddStudent(CreateStudentFromForm());
+            RefreshStudentGrid();
+            ClearForm();
+            MessageBox.Show(this, "Đã thêm sinh viên thành công.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-
-        RefreshStudentGrid();
-        ClearForm();
-        MessageBox.Show(this, "Đã thêm sinh viên thành công.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        catch (Exception exception)
+        {
+            ShowError(exception);
+        }
     }
 
     private void BtnSua_Click(object? sender, EventArgs e)
     {
-        var student = CreateStudentFromForm();
-        if (!_studentService.TryUpdateStudent(student, out var error))
+        try
         {
-            ShowError(error);
-            return;
+            var student = CreateStudentFromForm();
+            _studentService.UpdateStudent(student);
+            RefreshStudentGrid();
+            SetStudentFields(_studentService.GetStudentById(student.MaSV)!);
+            MessageBox.Show(this, "Đã cập nhật thông tin sinh viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-
-        RefreshStudentGrid();
-        SetStudentFields(_studentService.GetStudentById(student.MaSV)!);
-        MessageBox.Show(this, "Đã cập nhật thông tin sinh viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        catch (Exception exception)
+        {
+            ShowError(exception);
+        }
     }
 
     private void BtnXoa_Click(object? sender, EventArgs e)
@@ -514,15 +541,17 @@ public sealed class Form1 : Form
             return;
         }
 
-        if (!_studentService.TryDeleteStudent(studentId, out var error))
+        try
         {
-            ShowError(error);
-            return;
+            _studentService.DeleteStudent(studentId);
+            RefreshStudentGrid();
+            ClearForm();
+            MessageBox.Show(this, "Đã xóa sinh viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
-
-        RefreshStudentGrid();
-        ClearForm();
-        MessageBox.Show(this, "Đã xóa sinh viên.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        catch (Exception exception)
+        {
+            ShowError(exception);
+        }
     }
 
     private SinhVien CreateStudentFromForm() => new()
@@ -611,16 +640,30 @@ public sealed class Form1 : Form
 
     private void ApplyFilters()
     {
-        var classId = _cboLocLop.SelectedValue as string;
-        RefreshStudentGrid(_studentService.SearchStudents(_txtTuKhoa.Text, classId, _numDiemTu.Value));
+        try
+        {
+            var classId = _cboLocLop.SelectedValue as string;
+            RefreshStudentGrid(_studentService.SearchStudents(_txtTuKhoa.Text, classId, _numDiemTu.Value));
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception);
+        }
     }
 
     private void ShowAllStudents()
     {
-        _txtTuKhoa.Clear();
-        _cboLocLop.SelectedIndex = 0;
-        _numDiemTu.Value = 0;
-        RefreshStudentGrid();
+        try
+        {
+            _txtTuKhoa.Clear();
+            _cboLocLop.SelectedIndex = 0;
+            _numDiemTu.Value = 0;
+            RefreshStudentGrid();
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception);
+        }
     }
 
     private void GridStudents_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -634,6 +677,22 @@ public sealed class Form1 : Form
         }
     }
 
-    private void ShowError(string error) =>
-        MessageBox.Show(this, error, "Thông tin chưa hợp lệ", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    private void ShowError(Exception exception)
+    {
+        var message = exception switch
+        {
+            BusinessRuleException businessRuleException => businessRuleException.Message,
+            KeyNotFoundException => "Không tìm thấy bản ghi cần thao tác.",
+            SqliteException { SqliteExtendedErrorCode: 1555 or 2067 } => "Mã sinh viên hoặc mã lớp đã tồn tại.",
+            SqliteException { SqliteExtendedErrorCode: 787 } => "Không thể xóa lớp vì vẫn còn sinh viên thuộc lớp đó.",
+            SqliteException { SqliteErrorCode: 19 } => "Dữ liệu không hợp lệ hoặc vi phạm ràng buộc của cơ sở dữ liệu.",
+            SqliteException { SqliteErrorCode: 14 } => "Không thể mở tệp cơ sở dữ liệu. Kiểm tra quyền ghi vào thư mục dữ liệu ứng dụng.",
+            UnauthorizedAccessException => "Không có quyền truy cập tệp cơ sở dữ liệu.",
+            IOException => "Không thể đọc hoặc ghi tệp cơ sở dữ liệu.",
+            SqliteException sqliteException => $"Lỗi SQLite ({sqliteException.SqliteErrorCode}): {sqliteException.Message}",
+            _ => $"Không thể hoàn thành thao tác. {exception.Message}"
+        };
+
+        MessageBox.Show(this, message, "Lỗi dữ liệu", MessageBoxButtons.OK, MessageBoxIcon.Error);
+    }
 }

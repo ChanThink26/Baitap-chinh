@@ -26,74 +26,55 @@ public sealed class SinhVienService(IStudentRepository repository)
             .ToList();
     }
 
-    public bool TryAddStudent(SinhVien student, out string error)
+    public void AddStudent(SinhVien student)
     {
         Normalize(student);
-        if (!ValidateStudent(student, out error))
-        {
-            return false;
-        }
+        ValidateStudent(student);
 
         if (repository.GetStudentById(student.MaSV) is not null)
         {
-            error = "Mã sinh viên đã tồn tại.";
-            return false;
+            throw new BusinessRuleException("Mã sinh viên đã tồn tại.");
         }
 
         repository.AddStudent(student);
-        error = string.Empty;
-        return true;
     }
 
-    public bool TryUpdateStudent(SinhVien student, out string error)
+    public void UpdateStudent(SinhVien student)
     {
         Normalize(student);
-        if (!ValidateStudent(student, out error))
-        {
-            return false;
-        }
+        ValidateStudent(student);
 
         if (repository.GetStudentById(student.MaSV) is null)
         {
-            error = "Không tìm thấy sinh viên cần sửa.";
-            return false;
+            throw new BusinessRuleException("Không tìm thấy sinh viên cần sửa.");
         }
 
         repository.UpdateStudent(student);
-        error = string.Empty;
-        return true;
     }
 
-    public bool TryDeleteStudent(string studentId, out string error)
+    public void DeleteStudent(string studentId)
     {
         if (repository.GetStudentById(studentId) is null)
         {
-            error = "Không tìm thấy sinh viên cần xóa.";
-            return false;
+            throw new BusinessRuleException("Không tìm thấy sinh viên cần xóa.");
         }
 
         repository.DeleteStudent(studentId);
-        error = string.Empty;
-        return true;
     }
 
-    private bool ValidateStudent(SinhVien student, out string error)
+    private void ValidateStudent(SinhVien student)
     {
         if (!student.IsValid(out var validationResults))
         {
-            error = string.Join(Environment.NewLine, validationResults.Select(result => result.ErrorMessage));
-            return false;
+            throw new BusinessRuleException(
+                string.Join(Environment.NewLine, validationResults.Select(result => result.ErrorMessage)));
         }
 
         if (!repository.GetClasses().Any(classItem =>
                 string.Equals(classItem.MaLop, student.MaLop, StringComparison.OrdinalIgnoreCase)))
         {
-            error = "Lớp học được chọn không tồn tại.";
-            return false;
+            throw new BusinessRuleException("Lớp học được chọn không tồn tại.");
         }
-
-        error = string.Empty;
-        return true;
     }
 
     private static void Normalize(SinhVien student)
